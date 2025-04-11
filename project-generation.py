@@ -379,6 +379,90 @@ class ProjectGenerator:
         ]
         self.messages = []
         self.project_name = None
+    
+    def generate_readme(self, project_type, project_name, project_description, project_structure=None):
+        """
+        Generates or regenerates a README.md file for a project.
+        
+        Args:
+            project_type (str): Type of the project (e.g., "MERN", "Django+React", etc.)
+            project_name (str): Name of the project
+            project_description (str): Detailed description of the project
+            project_structure (dict, optional): Existing project structure information
+            
+        Returns:
+            dict: Result of README generation
+        """
+        start_time = time.time()
+        
+        # Check if README.md already exists
+        readme_exists = os.path.exists("README.md")
+        
+        # Initial prompt to GPT-4o
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert technical writer specialized in creating comprehensive README.md files "
+                    "for software projects. Your task is to generate a professional README.md that follows "
+                    "best practices and includes all standard sections such as project description, features, "
+                    "installation, usage, API documentation (if applicable), technologies used, and contributing guidelines."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Generate a detailed README.md for a {project_type} project named '{project_name}' "
+                    f"with the following description:\n\n{project_description}\n\n"
+                    f"Use proper Markdown formatting and follow industry best practices for "
+                    f"structuring a README file. Include sections for prerequisites, installation, "
+                    f"usage, API endpoints (if applicable), and contributing guidelines."
+                )
+            }
+        ]
+        
+        # If we have project structure info, add it to the prompt
+        if project_structure:
+            dir_list = "\n".join([f"- {d}" for d in project_structure.get("directories_created", [])])
+            file_list = "\n".join([f"- {f}" for f in project_structure.get("files_created", [])])
+            
+            structure_prompt = (
+                f"\n\nThis project has the following structure:\n\nDirectories:\n{dir_list}\n\n"
+                f"Files:\n{file_list}\n\nPlease incorporate this structure information into "
+                f"the README.md where appropriate, especially in the installation and usage sections."
+            )
+            
+            messages[1]["content"] += structure_prompt
+        
+        try:
+            # Get response from GPT-4o
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages
+            )
+            
+            # Get the README content
+            readme_content = response.choices[0].message.content
+            
+            # Write to README.md
+            success = write_to_file("README.md", readme_content)
+            
+            end_time = time.time()
+            duration = end_time - start_time
+            
+            return {
+                "success": success,
+                "readme_existed": readme_exists,
+                "content": readme_content,
+                "generation_time_seconds": duration
+            }
+        
+        except Exception as e:
+            print(f"Error generating README: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
         
     def _handle_tool_calls(self, tool_calls):
         """
@@ -597,29 +681,50 @@ class ProjectGenerator:
             "actions": actions_taken
         }
 
-# Example usage
 def main():
-    # Replace with your actual OpenAI API key
+    """
+    Main function that takes input from the terminal and runs the generator.
+    """
+    print("=" * 80)
+    print("GPT-4o PROJECT GENERATOR")
+    print("=" * 80)
+    print("This tool will generate a complete project structure based on your specifications.")
+    print("Please provide the following information:")
+    print()
+    
+    # Get project type
+    project_type = input("Enter project type (e.g., MERN Stack, Django+React): ").strip()
+    
+    # Get project name
+    project_name = input("Enter project name: ").strip()
+    
+    # Get project description (multiline input)
+    print("\nEnter project description (type 'END' on a new line when finished):")
+    project_description_lines = []
+    while True:
+        line = input()
+        if line.strip() == "END":
+            break
+        project_description_lines.append(line)
+    
+    project_description = "\n".join(project_description_lines)
+    
+    # Get the OpenAI API key
     api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        print("Error: OPENAI_API_KEY not found in environment variables.")
+        print("Please set this variable in a .env file or directly in your environment.")
+        return
     
     # Create the project generator
     generator = ProjectGenerator(api_key)
     
-    # Define project details
-    project_type = "MERN Stack"  # Example: MERN, MEAN, Django+React, etc.
-    project_name = "taskmanager"
-    project_description = """
-    A task management application with user authentication, task creation, 
-    assignment, and tracking features. It should include:
-    - User registration and authentication
-    - Task creation with title, description, due date, priority, and assignee
-    - Dashboard with task statistics and visualizations
-    - RESTful API for all operations
-    - Responsive frontend design
-    - Docker configuration for development and production
-    """
+    print(f"\nStarting project generation for {project_name}...")
+    print(f"Type: {project_type}")
+    print(f"Description: {project_description}")
+    print("=" * 80)
     
-    # Generate the project
+    # Generate the complete project
     result = generator.generate_project(project_type, project_name, project_description)
     
     # Print summary
