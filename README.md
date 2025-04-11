@@ -25,8 +25,8 @@ A powerful Python tool that leverages OpenAI's GPT-4o to automatically generate 
 
 1. Clone this repository:
 ```bash
-git clone [https://github.com/yourusername/gpt4o-project-generator.git](https://github.com/singhbipin2117/gen-ai-project-generator)
-cd gpt4o-project-generator
+git clone https://github.com/singhbipin2117/gen-ai-project-generator
+cd gen-ai-project-generator
 ```
 
 2. Create and activate a virtual environment (optional but recommended):
